@@ -12,6 +12,7 @@ struct Bounded {
 struct Progress<It, Bound> {
     iter: It,
     i: usize,
+    bar: char,
     bound: Bound,
 }
 
@@ -21,7 +22,7 @@ trait ProgressDisplay: Sized {
 
 impl ProgressDisplay for Unbounded {
     fn display<It>(&self, progress: &Progress<It, Self>) {
-        println!("{}", "*".repeat(progress.i));
+        println!("{}", format!("{}", progress.bar).repeat(progress.i));
     }
 }
 
@@ -30,7 +31,7 @@ impl ProgressDisplay for Bounded {
         println!(
             "{}{}{}{}",
             self.delims.0,
-            "*".repeat(progress.i),
+            format!("{}", progress.bar).repeat(progress.i),
             " ".repeat(self.bound - progress.i),
             self.delims.1,
         );
@@ -44,8 +45,14 @@ impl<It> Progress<It, Unbounded> {
         Progress {
             iter,
             i: 0,
+            bar: '█',
             bound: Unbounded,
         }
+    }
+
+    pub fn with_bar(mut self, bar: char) -> Progress<It, Unbounded> {
+        self.bar = bar;
+        self
     }
 }
 
@@ -62,6 +69,7 @@ where
         Progress {
             iter: self.iter,
             i: self.i,
+            bar: self.bar,
             bound,
         }
     }
@@ -114,7 +122,13 @@ fn main() {
     // }
     let v = vec![1, 2, 3, 4, 5];
     // Trait superpower start here, extending existing function without touching the function itself
-    for i in v.iter().progress().with_bound().with_delims(brkt) {
+    for i in v
+        .iter()
+        .progress()
+        .with_bar('*')
+        .with_bound()
+        .with_delims(brkt)
+    {
         expensive_calculation(i);
     }
 }
