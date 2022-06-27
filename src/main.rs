@@ -6,6 +6,7 @@ struct Progress<It> {
     iter: It,
     i: usize,
     bound: Option<usize>,
+    delims: (char, char),
 }
 
 // associate method with a Type
@@ -16,6 +17,7 @@ impl<It> Progress<It> {
             iter,
             i: 0,
             bound: None,
+            delims: ('[', ']'),
         }
     }
 }
@@ -27,6 +29,16 @@ where
 {
     pub fn with_bound(mut self) -> Self {
         self.bound = Some(self.iter.len());
+        self
+    }
+}
+
+impl<It> Progress<It>
+where
+    It: ExactSizeIterator,
+{
+    pub fn with_delims(mut self, delims: (char, char)) -> Self {
+        self.delims = delims;
         self
     }
 }
@@ -44,7 +56,13 @@ where
         print!("{}", CLEAR);
         match self.bound {
             Some(bound) => {
-                println!("[{}{}]", "*".repeat(self.i), " ".repeat(bound - self.i));
+                println!(
+                    "{}{}{}{}",
+                    self.delims.0,
+                    "*".repeat(self.i),
+                    " ".repeat(bound - self.i),
+                    self.delims.1,
+                );
             }
             None => {
                 println!("{}", "*".repeat(self.i));
@@ -67,13 +85,14 @@ impl<It> ProgressIteratorExt for It {
 }
 
 fn main() {
+    let brkt = ('|', '>');
     // unbouded
-    // for i in (0..).progress().with_bound() {
+    // for i in (0..).progress().with_delims(brkt) {
     //     expensive_calculation(&i);
     // }
     let v = vec![1, 2, 3, 4, 5];
     // Trait superpower start here, extending existing function without touching the function itself
-    for i in v.iter().progress().with_bound() {
+    for i in v.iter().progress().with_bound().with_delims(brkt) {
         expensive_calculation(i);
     }
 }
