@@ -2,9 +2,12 @@ use std::{thread::sleep, time::Duration};
 
 const CLEAR: &str = "\x1B[2J\x1B[1;1H";
 
-fn progress<T>(v: Vec<T>, f: fn(&T) -> &T) {
+fn progress<T, It>(it: It, f: fn(T) -> T)
+where
+    It: Iterator<Item = T>, // constrained to type of T
+{
     let mut s = 1; // state of progress
-    for i in v.iter() {
+    for i in it {
         println!("{}{}", CLEAR, "*".repeat(s));
         s += 1;
         f(i);
@@ -13,7 +16,7 @@ fn progress<T>(v: Vec<T>, f: fn(&T) -> &T) {
 
 fn main() {
     let v = vec![1, 2, 3];
-    progress(v, expensive_calculation);
+    progress(v.iter(), expensive_calculation);
 }
 
 fn expensive_calculation(_n: &i32) -> &i32 {
