@@ -2,90 +2,112 @@ use std::{thread::sleep, time::Duration};
 
 const CLEAR: &str = "\x1B[2J\x1B[1;1H";
 
-struct Progress<It> {
+//state of progressbar
+struct Unbounded;
+struct Bounded {
+    bound: usize,
+    delims: (char, char),
+}
+
+struct Progress<It, Bound> {
     iter: It,
     i: usize,
-    bound: Option<usize>,
-    delims: (char, char),
+    bound: Bound,
+}
+
+trait ProgressDisplay: Sized {
+    fn display<It>(&self, progress: &Progress<It, Self>);
+}
+
+impl ProgressDisplay for Unbounded {
+    fn display<It>(&self, progress: &Progress<It, Self>) {
+        println!("{}", "*".repeat(progress.i));
+    }
+}
+
+impl ProgressDisplay for Bounded {
+    fn display<It>(&self, progress: &Progress<It, Self>) {
+        println!(
+            "{}{}{}{}",
+            self.delims.0,
+            "*".repeat(progress.i),
+            " ".repeat(self.bound - progress.i),
+            self.delims.1,
+        );
+    }
 }
 
 // associate method with a Type
 // Impl block is quantified: for all type It implement progress of It, below call is valid to Progress
-impl<It> Progress<It> {
+impl<It> Progress<It, Unbounded> {
     pub fn new(iter: It) -> Self {
         Progress {
             iter,
             i: 0,
-            bound: None,
-            delims: ('[', ']'),
+            bound: Unbounded,
         }
     }
 }
 
 //Bounded and Unbounded
-impl<It> Progress<It>
+impl<It> Progress<It, Unbounded>
 where
     It: ExactSizeIterator,
 {
-    pub fn with_bound(mut self) -> Self {
-        self.bound = Some(self.iter.len());
-        self
+    pub fn with_bound(self) -> Progress<It, Bounded> {
+        let bound = Bounded {
+            bound: self.iter.len(),
+            delims: ('[', ']'),
+        };
+        Progress {
+            iter: self.iter,
+            i: self.i,
+            bound,
+        }
     }
 }
 
-impl<It> Progress<It>
+impl<It> Progress<It, Bounded>
 where
     It: ExactSizeIterator,
 {
     pub fn with_delims(mut self, delims: (char, char)) -> Self {
-        self.delims = delims;
+        self.bound.delims = delims;
         self
     }
 }
 
 // implement Iterator Trait
 // https://doc.rust-lang.org/std/iter/trait.Iterator.html
-impl<It> Iterator for Progress<It>
+impl<It, Bound> Iterator for Progress<It, Bound>
 where
     It: Iterator,
+    Bound: ProgressDisplay,
 {
     type Item = It::Item;
     // implement print progress whenever next() called, usually on loop
     fn next(&mut self) -> Option<Self::Item> {
         // print progress
         print!("{}", CLEAR);
-        match self.bound {
-            Some(bound) => {
-                println!(
-                    "{}{}{}{}",
-                    self.delims.0,
-                    "*".repeat(self.i),
-                    " ".repeat(bound - self.i),
-                    self.delims.1,
-                );
-            }
-            None => {
-                println!("{}", "*".repeat(self.i));
-            }
-        }
+        self.bound.display(&self);
         self.i += 1;
         self.iter.next()
     }
 }
 
 trait ProgressIteratorExt: Sized {
-    fn progress(self) -> Progress<Self>;
+    fn progress(self) -> Progress<Self, Unbounded>;
 }
 
 // implement Trait to Type Generic, 🤯🤯🤯
 impl<It> ProgressIteratorExt for It {
-    fn progress(self) -> Progress<Self> {
+    fn progress(self) -> Progress<It, Unbounded> {
         Progress::new(self)
     }
 }
 
 fn main() {
-    let brkt = ('|', '>');
+    let brkt = ('|', '|');
     // unbouded
     // for i in (0..).progress().with_delims(brkt) {
     //     expensive_calculation(&i);
