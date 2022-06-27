@@ -31,9 +31,21 @@ where
     }
 }
 
+trait ProgressIteratorExt: Sized {
+    fn progress(self) -> Progress<Self>;
+}
+
+// implement Trait to Type Generic, 🤯🤯🤯
+impl<It> ProgressIteratorExt for It {
+    fn progress(self) -> Progress<Self> {
+        Progress::new(self)
+    }
+}
+
 fn main() {
-    let v = vec![1, 2, 3];
-    for i in Progress::new(v.iter()) {
+    let v = vec![1, 2, 3, 4, 5];
+    // Trait superpower start here, extending existing function without touching the function itself
+    for i in v.iter().progress() {
         expensive_calculation(i);
     }
 }
